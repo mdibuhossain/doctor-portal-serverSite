@@ -2,8 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const { MongoClient } = require("mongodb");
 const admin = require("firebase-admin");
-const serviceAccount = require('./doctor-spiral-firebase-adminsdk.json');
 require('dotenv').config();
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -41,14 +41,17 @@ async function run() {
         const appointmentsCollection = database.collection('appointments');
         const usersCollection = database.collection('users');
 
-        app.get('/appointments', async (req, res) => {
+        app.get('/appointments', verifyToken, async (req, res) => {
             const email = req.query.email;
             const date = req.query.date;
-            const query = { email: email, date: date };
-            console.log(query);
-            const cursor = appointmentsCollection.find(query);
-            const appointment = await cursor.toArray();
-            res.json(appointment);
+            const requester = req?.decodeEmail;
+            if (requester) {
+                const query = { email: requester, date: date };
+                const cursor = await appointmentsCollection.find(query);
+                console.log(cursor);
+                const appointment = await cursor.toArray();
+                res.json(appointment);
+            }
         })
 
         app.post('/appointments', async (req, res) => {
