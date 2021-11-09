@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const { MongoClient } = require("mongodb");
+const admin = require("firebase-admin");
+const serviceAccount = require('./doctor-spiral-firebase-adminsdk.json');
 require('dotenv').config();
 
 const app = express();
@@ -9,7 +11,24 @@ const port = process.env.PORT || 5000;
 // midware
 app.use(cors());
 app.use(express.json());
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+});
 
+
+const verifyToken = async (req, res, next) => {
+    if (req.headers?.authorization?.startsWith('Bearer ')) {
+        const token = req.headers?.authorization.split(' ')[1];
+        try {
+            const decodeUser = await admin.auth().verifyIdToken(token);
+            req.decodeEmail = decodeUser.email;
+        }
+        catch {
+
+        }
+    }
+    next();
+}
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.5p7yt.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
@@ -66,13 +85,21 @@ async function run() {
             res.json(result);
         })
 
-        app.put('/users/admin', async (req, res) => {
+        app.put('/users/admin', verifyToken, async (req, res) => {
             const user = req.body;
-            console.log(user);
-            const filter = { email: user.email };
-            const updateDoc = { $set: { role: 'admin' } };
-            const result = await usersCollection.updateOne(filter, updateDoc);
-            res.json(result);
+            const requester = req?.decodeEmail;
+            if (requester) {
+                const requesterAccount = await usersCollection.findOne({ email: requester });
+                if (requesterAccount.role === 'admin') {
+                    const filter = { email: user.email };
+                    const updateDoc = { $set: { role: 'admin' } };
+                    const result = await usersCollection.updateOne(filter, updateDoc);
+                    res.json(result);
+                }
+            }
+            else {
+                res.status(403).json({ message: 'You have no access' });
+            }
         })
 
     } finally {

@@ -1,4 +1,5 @@
 /node_modules
+doctor-spiral-firebase-adminsdk.json
 
 .env
 .env.local
