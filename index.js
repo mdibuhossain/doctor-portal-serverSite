@@ -47,8 +47,8 @@ async function run() {
             const requester = req?.decodeEmail;
             if (requester) {
                 const query = { email: requester, date: date };
-                const cursor = await appointmentsCollection.find(query);
-                console.log(cursor);
+                const cursor = appointmentsCollection.find(query);
+                // console.log(cursor);
                 const appointment = await cursor.toArray();
                 res.json(appointment);
             }
@@ -79,7 +79,7 @@ async function run() {
 
         app.put('/users', async (req, res) => {
             const user = req.body;
-            console.log(user);
+            // console.log(user);
             const filter = { email: user?.email };
             const options = { upsert: true };
             const updateDoc = { $set: user };
